@@ -2,6 +2,7 @@
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
 const ejs = require("ejs");
 const _ = require("lodash");
 
@@ -17,12 +18,26 @@ app.set("view engine", "ejs");
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+mongoose.connect(
+  "mongodb+srv://admin-shantanu:pass1234@cluster0.t9vhn.mongodb.net/todolistDB",
+  { useNewUrlParser: true }
+);
+
+const blogSchema = {
+  title: String,
+  content: String,
+};
+
+const Blog = mongoose.model("Blog", blogSchema);
+
 let posts = [];
 
 app.get("/", function (req, res) {
-  res.render("home", {
-    startingContent: homeStartingContent,
-    posts: posts,
+  Blog.find({}, function (err, foundBlogs) {
+    res.render("home", {
+      startingContent: homeStartingContent,
+      posts: foundBlogs,
+    });
   });
 });
 
@@ -39,12 +54,12 @@ app.get("/compose", function (req, res) {
 });
 
 app.post("/compose", function (req, res) {
-  const post = {
+  const post = new Blog({
     title: req.body.postTitle,
     content: req.body.postBody,
-  };
+  });
 
-  posts.push(post);
+  post.save();
 
   res.redirect("/");
 });
@@ -52,15 +67,11 @@ app.post("/compose", function (req, res) {
 app.get("/posts/:postName", function (req, res) {
   const requestedTitle = _.lowerCase(req.params.postName);
 
-  posts.forEach(function (post) {
-    const storedTitle = _.lowerCase(post.title);
-
-    if (storedTitle === requestedTitle) {
-      res.render("post", {
-        title: post.title,
-        content: post.content,
-      });
-    }
+  Blog.findOne({ title: requestedTitle }, function (err, foundBlogs) {
+    res.render("post", {
+      title: foundBlogs.title,
+      content: foundBlogs.content,
+    });
   });
 });
 
